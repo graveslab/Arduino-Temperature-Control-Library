@@ -110,19 +110,19 @@ bool DallasTemperature::getAddress(uint8_t* deviceAddress, uint8_t index) {
 }
 
 // attempt to determine if the device at the given address is connected to the bus
-bool DallasTemperature::isConnected(const uint8_t* deviceAddress = DEVICE_NOADDRESS) {
+bool DallasTemperature::isConnected(const uint8_t* deviceAddress /*= DEVICE_NOADDRESS*/) {
     ScratchPad scratchPad;
     return isConnected(scratchPad, deviceAddress);
 }
 
 // attempt to determine if the device at the given address is connected to the bus
 // also allows for updating the read scratchpad
-bool DallasTemperature::isConnected(uint8_t* scratchPad, const uint8_t* deviceAddress = DEVICE_NOADDRESS) {
+bool DallasTemperature::isConnected(uint8_t* scratchPad, const uint8_t* deviceAddress /*= DEVICE_NOADDRESS*/) {
     bool b = readScratchPad(scratchPad, deviceAddress);
     return b && (_wire->crc8(scratchPad, 8) == scratchPad[SCRATCHPAD_CRC]);
 }
 
-bool DallasTemperature::readScratchPad(uint8_t* scratchPad, const uint8_t* deviceAddress = DEVICE_NOADDRESS) {
+bool DallasTemperature::readScratchPad(uint8_t* scratchPad, const uint8_t* deviceAddress /*= DEVICE_NOADDRESS*/) {
     // send the reset command and fail fast
     int b = _wire->reset();
     if (b == 0) return false;
@@ -158,7 +158,7 @@ bool DallasTemperature::readScratchPad(uint8_t* scratchPad, const uint8_t* devic
 }
 
 
-void DallasTemperature::writeScratchPad(const uint8_t* scratchPad, const uint8_t* deviceAddress = DEVICE_NOADDRESS, bool isDS18S20 = false) {
+void DallasTemperature::writeScratchPad(const uint8_t* scratchPad, const uint8_t* deviceAddress /*= DEVICE_NOADDRESS*/, bool isDS18S20 /*= false*/) {
     _wire->reset();
     if (deviceAddress = DEVICE_NOADDRESS) {
         _wire->skip();
@@ -184,7 +184,7 @@ void DallasTemperature::writeScratchPad(const uint8_t* scratchPad, const uint8_t
     _wire->reset();
 }
 
-bool DallasTemperature::readPowerSupply(const uint8_t* deviceAddress = DEVICE_NOADDRESS) {
+bool DallasTemperature::readPowerSupply(const uint8_t* deviceAddress /*= DEVICE_NOADDRESS*/) {
     bool ret = false;
     _wire->reset();
     if (deviceAddress = DEVICE_NOADDRESS) {
@@ -412,7 +412,7 @@ float DallasTemperature::getTempFByIndex(uint8_t deviceIndex, bool isDS18S20 = f
 }
 
 // reads scratchpad and returns fixed-point temperature, scaling factor 2^-7
-int16_t DallasTemperature::calculateTemperature(uint8_t* scratchPad, const uint8_t* deviceAddress = DEVICE_NOADDRESS, bool isDS18S20 = false) {
+int16_t DallasTemperature::calculateTemperature(uint8_t* scratchPad, const uint8_t* deviceAddress /*= DEVICE_NOADDRESS*/, bool isDS18S20 /*= false*/) {
     int16_t fpTemperature =
     (((int16_t) scratchPad[TEMP_MSB]) << 11) |
     (((int16_t) scratchPad[TEMP_LSB]) << 3);
@@ -457,7 +457,7 @@ int16_t DallasTemperature::calculateTemperature(uint8_t* scratchPad, const uint8
 // the numeric value of DEVICE_DISCONNECTED_RAW is defined in
 // DallasTemperature.h. It is a large negative number outside the
 // operating range of the device
-int16_t DallasTemperature::getTemp(const uint8_t* deviceAddress = DEVICE_NOADDRESS, bool isDS18S20 = false) {
+int16_t DallasTemperature::getTemp(const uint8_t* deviceAddress /*= DEVICE_NOADDRESS*/, bool isDS18S20 /*= false*/) {
     ScratchPad scratchPad;
     if (isConnected(scratchPad, deviceAddress)) return calculateTemperature(scratchPad, deviceAddress, isDS18S20);
     return DEVICE_DISCONNECTED_RAW;
@@ -468,7 +468,7 @@ int16_t DallasTemperature::getTemp(const uint8_t* deviceAddress = DEVICE_NOADDRE
 // the numeric value of DEVICE_DISCONNECTED_C is defined in
 // DallasTemperature.h. It is a large negative number outside the
 // operating range of the device
-float DallasTemperature::getTempC(const uint8_t* deviceAddress = DEVICE_NOADDRESS, bool isDS18S20 = false) {
+float DallasTemperature::getTempC(const uint8_t* deviceAddress /*= DEVICE_NOADDRESS*/, bool isDS18S20 /*= false*/) {
     return rawToCelsius(getTemp(deviceAddress, isDS18S20));
 }
 
@@ -477,7 +477,7 @@ float DallasTemperature::getTempC(const uint8_t* deviceAddress = DEVICE_NOADDRES
 // the numeric value of DEVICE_DISCONNECTED_F is defined in
 // DallasTemperature.h. It is a large negative number outside the
 // operating range of the device
-float DallasTemperature::getTempF(const uint8_t* deviceAddress = DEVICE_NOADDRESS, bool isDS18S20 = false) {
+float DallasTemperature::getTempF(const uint8_t* deviceAddress /*= DEVICE_NOADDRESS*/, bool isDS18S20 /*= false*/) {
     return rawToFahrenheit(getTemp(deviceAddress, isDS18S20));
 }
 
