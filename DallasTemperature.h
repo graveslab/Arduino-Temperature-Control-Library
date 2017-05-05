@@ -63,20 +63,20 @@ public:
     bool getAddress(uint8_t*, uint8_t);
 
     // attempt to determine if the device at the given address is connected to the bus
-    bool isConnected(const uint8_t*);
+    bool isConnected(const uint8_t* = DEVICE_NOADDRESS);
 
     // attempt to determine if the device at the given address is connected to the bus
     // also allows for updating the read scratchpad
-    bool isConnected(uint8_t*, const uint8_t*);
+    bool isConnected(uint8_t*, const uint8_t* = DEVICE_NOADDRESS);
 
     // read device's scratchpad
-    bool readScratchPad(uint8_t*, const uint8_t*);
+    bool readScratchPad(uint8_t*, const uint8_t* = DEVICE_NOADDRESS);
 
     // write device's scratchpad
-    void writeScratchPad(const uint8_t*, const uint8_t*, bool);
+    void writeScratchPad(const uint8_t*, const uint8_t* = DEVICE_NOADDRESS, bool = false);
 
     // read device's power requirements
-    bool readPowerSupply(const uint8_t*);
+    bool readPowerSupply(const uint8_t* = DEVICE_NOADDRESS);
 
     // get global resolution
     uint8_t getResolution();
@@ -108,19 +108,19 @@ public:
     bool requestTemperaturesByIndex(uint8_t);
 
     // returns temperature raw value (12 bit integer of 1/128 degrees C)
-    int16_t getTemp(const uint8_t*, bool);
+    int16_t getTemp(const uint8_t* = DEVICE_NOADDRESS, bool = false);
 
     // returns temperature in degrees C
-    float getTempC(const uint8_t*, bool);
+    float getTempC(const uint8_t* = DEVICE_NOADDRESS, bool = false);
 
     // returns temperature in degrees F
-    float getTempF(const uint8_t*, bool);
+    float getTempF(const uint8_t* = DEVICE_NOADDRESS, bool = false);
 
     // Get temperature for device index (slow)
-    float getTempCByIndex(uint8_t, bool);
+    float getTempCByIndex(uint8_t, bool = false);
 
     // Get temperature for device index (slow)
-    float getTempFByIndex(uint8_t, bool);
+    float getTempFByIndex(uint8_t, bool = false);
 
     // returns true if the bus requires parasite power
     bool isParasitePowerMode(void);
