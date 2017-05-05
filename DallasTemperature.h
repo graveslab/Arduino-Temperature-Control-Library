@@ -34,7 +34,7 @@
 #define DEVICE_DISCONNECTED_RAW -7040
 
 // Default Parameters
-#define DEVICE_NOADDRESS -1
+#define DEVICE_NOADDRESS (const uint8_t)0
 
 typedef uint8_t DeviceAddress[8];
 
@@ -228,7 +228,7 @@ private:
     OneWire* _wire;
 
     // reads scratchpad and returns the raw temperature
-    int16_t calculateTemperature(const uint8_t*, uint8_t*);
+    int16_t calculateTemperature(uint8_t*, const uint8_t*, bool);
 
     void	blockTillConversionComplete(uint8_t);
 

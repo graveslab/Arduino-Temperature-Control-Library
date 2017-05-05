@@ -127,7 +127,7 @@ bool DallasTemperature::readScratchPad(uint8_t* scratchPad, const uint8_t* devic
     int b = _wire->reset();
     if (b == 0) return false;
 	
-    if (deviceAddress = DEVICE_NOADDRESS) {
+    if (deviceAddress == DEVICE_NOADDRESS) {
         _wire->skip();
     }
     else {
@@ -160,7 +160,7 @@ bool DallasTemperature::readScratchPad(uint8_t* scratchPad, const uint8_t* devic
 
 void DallasTemperature::writeScratchPad(const uint8_t* scratchPad, const uint8_t* deviceAddress /*= DEVICE_NOADDRESS*/, bool isDS18S20 /*= false*/) {
     _wire->reset();
-    if (deviceAddress = DEVICE_NOADDRESS) {
+    if (deviceAddress == DEVICE_NOADDRESS) {
         _wire->skip();
     }
     else {
@@ -171,7 +171,7 @@ void DallasTemperature::writeScratchPad(const uint8_t* scratchPad, const uint8_t
     _wire->write(scratchPad[LOW_ALARM_TEMP]); // low alarm temp
 
     // DS1820 and DS18S20 have no configuration register
-    if (deviceAddress[0] != DS18S20MODEL && !isDS1820) _wire->write(scratchPad[CONFIGURATION]);
+    if (deviceAddress[0] != DS18S20MODEL && !isDS18S20) _wire->write(scratchPad[CONFIGURATION]);
 
     _wire->reset();
 
@@ -187,7 +187,7 @@ void DallasTemperature::writeScratchPad(const uint8_t* scratchPad, const uint8_t
 bool DallasTemperature::readPowerSupply(const uint8_t* deviceAddress /*= DEVICE_NOADDRESS*/) {
     bool ret = false;
     _wire->reset();
-    if (deviceAddress = DEVICE_NOADDRESS) {
+    if (deviceAddress == DEVICE_NOADDRESS) {
         _wire->skip();
     }
     else {
@@ -394,7 +394,7 @@ bool DallasTemperature::requestTemperaturesByIndex(uint8_t deviceIndex){
 }
 
 // Fetch temperature for device index
-float DallasTemperature::getTempCByIndex(uint8_t deviceIndex, bool isDS18S20 = false) {
+float DallasTemperature::getTempCByIndex(uint8_t deviceIndex, bool isDS18S20 /*= false*/) {
     DeviceAddress deviceAddress;
     if (!getAddress(deviceAddress, deviceIndex)){
         return DEVICE_DISCONNECTED_C;
@@ -403,7 +403,7 @@ float DallasTemperature::getTempCByIndex(uint8_t deviceIndex, bool isDS18S20 = f
 }
 
 // Fetch temperature for device index
-float DallasTemperature::getTempFByIndex(uint8_t deviceIndex, bool isDS18S20 = false) {
+float DallasTemperature::getTempFByIndex(uint8_t deviceIndex, bool isDS18S20 /*= false*/) {
     DeviceAddress deviceAddress;
     if (!getAddress(deviceAddress, deviceIndex)){
         return DEVICE_DISCONNECTED_F;
@@ -442,7 +442,7 @@ int16_t DallasTemperature::calculateTemperature(uint8_t* scratchPad, const uint8
     See - http://myarduinotoy.blogspot.co.uk/2013/02/12bit-result-from-ds18s20.html
     */
 
-    if (deviceAddress[0] == DS18S20MODEL || isDS1820) {
+    if (deviceAddress[0] == DS18S20MODEL || isDS18S20) {
         fpTemperature = ((fpTemperature & 0xfff0) << 3) - 16 +
             (
                 ((scratchPad[COUNT_PER_C] - scratchPad[COUNT_REMAIN]) << 7) /
@@ -714,7 +714,7 @@ bool DallasTemperature::alarmSearch(uint8_t* newAddr) {
 bool DallasTemperature::hasAlarm(const uint8_t* deviceAddress) {
     ScratchPad scratchPad;
     if (isConnected(scratchPad, deviceAddress)) {
-        char temp = calculateTemperature(deviceAddress, scratchPad) >> 7;
+        char temp = calculateTemperature(scratchPad, deviceAddress, false) >> 7;
 
         // check low alarm
         if (temp <= (char)scratchPad[LOW_ALARM_TEMP]) return true;
