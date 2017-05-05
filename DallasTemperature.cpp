@@ -486,7 +486,6 @@ int16_t DallasTemperature::calculateTemperature(const uint8_t* deviceAddress, ui
     return fpTemperature;
 }
 
-
 // returns temperature in 1/128 degrees C or DEVICE_DISCONNECTED_RAW if the
 // device's scratch pad cannot be read successfully.
 // the numeric value of DEVICE_DISCONNECTED_RAW is defined in
@@ -846,3 +845,85 @@ void DallasTemperature::operator delete(void* p){
 }
 
 #endif
+
+
+// SINGLE-DROP STUFF
+
+bool DallasTemperature::singleReadScratchPad(uint8_t* scratchPad){
+
+    // send the reset command and fail fast
+    int b = _wire->reset();
+    if (b == 0) return false;
+
+    //_wire->select(deviceAddress);
+    _wire->skip();
+    _wire->write(READSCRATCH);
+
+    // Read all registers in a simple loop
+    // byte 0: temperature LSB
+    // byte 1: temperature MSB
+    // byte 2: high alarm temp
+    // byte 3: low alarm temp
+    // byte 4: DS18S20: store for crc
+    //         DS18B20 & DS1822: configuration register
+    // byte 5: internal use & crc
+    // byte 6: DS18S20: COUNT_REMAIN
+    //         DS18B20 & DS1822: store for crc
+    // byte 7: DS18S20: COUNT_PER_C
+    //         DS18B20 & DS1822: store for crc
+    // byte 8: SCRATCHPAD_CRC
+    for(uint8_t i = 0; i < 9; i++){
+        scratchPad[i] = _wire->read();
+    }
+
+    b = _wire->reset();
+    return (b == 1);
+}
+
+bool DallasTemperature::singleConnected(uint8_t* scratchPad)
+{
+    bool b = singleReadScratchPad(scratchPad);
+    return b && (_wire->crc8(scratchPad, 8) == scratchPad[SCRATCHPAD_CRC]);
+}
+
+// reads scratchpad and returns fixed-point temperature, scaling factor 2^-7
+int16_t DallasTemperature::singleCalculateTemperature(uint8_t* scratchPad){
+
+    int16_t fpTemperature =
+    (((int16_t) scratchPad[TEMP_MSB]) << 11) |
+    (((int16_t) scratchPad[TEMP_LSB]) << 3);
+	
+    // NO SUPPORT FOR DS1820 and DS18S20 ("DS18SMODEL")
+
+    return fpTemperature;
+}
+
+// returns temperature in 1/128 degrees C or DEVICE_DISCONNECTED_RAW if the
+// device's scratch pad cannot be read successfully.
+// the numeric value of DEVICE_DISCONNECTED_RAW is defined in
+// DallasTemperature.h. It is a large negative number outside the
+// operating range of the device
+int16_t DallasTemperature::singleGetTemp(void){
+
+    ScratchPad scratchPad;
+    if (singleConnected(scratchPad)) return singleCalculateTemperature(scratchPad);
+    return DEVICE_DISCONNECTED_RAW;
+}
+
+// returns temperature in degrees C or DEVICE_DISCONNECTED_C if the
+// device's scratch pad cannot be read successfully.
+// the numeric value of DEVICE_DISCONNECTED_C is defined in
+// DallasTemperature.h. It is a large negative number outside the
+// operating range of the device
+float DallasTemperature::singleGetTempC(void){
+    return rawToCelsius(singleGetTemp());
+}
+
+// returns temperature in degrees F or DEVICE_DISCONNECTED_F if the
+// device's scratch pad cannot be read successfully.
+// the numeric value of DEVICE_DISCONNECTED_F is defined in
+// DallasTemperature.h. It is a large negative number outside the
+// operating range of the device
+float DallasTemperature::singleGetTempF(void){
+    return rawToFahrenheit(singleGetTemp());
+}
