@@ -937,7 +937,7 @@ int16_t DallasTemperature::singleCalculateTemperature(uint8_t* scratchPad, bool 
 int16_t DallasTemperature::singleGetTemp(bool isDS18S20){
 
     ScratchPad scratchPad;
-    if (singleConnected(scratchPad)) return singleCalculateTemperature(scratchPad, isDS18S20);
+    if (singleIsConnected(scratchPad)) return singleCalculateTemperature(scratchPad, isDS18S20);
     return DEVICE_DISCONNECTED_RAW;
 }
 
