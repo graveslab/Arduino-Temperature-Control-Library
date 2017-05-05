@@ -124,28 +124,33 @@ bool DallasTemperature::getAddress(uint8_t* deviceAddress, uint8_t index){
 }
 
 // attempt to determine if the device at the given address is connected to the bus
-bool DallasTemperature::isConnected(const uint8_t* deviceAddress){
-
+bool DallasTemperature::isConnected(const uint8_t* deviceAddress = DEVICE_NOADDRESS)
+{
     ScratchPad scratchPad;
-    return isConnected(deviceAddress, scratchPad);
-
+    return isConnected(scratchPad, deviceAddress);
 }
 
 // attempt to determine if the device at the given address is connected to the bus
 // also allows for updating the read scratchpad
-bool DallasTemperature::isConnected(const uint8_t* deviceAddress, uint8_t* scratchPad)
+bool DallasTemperature::isConnected(uint8_t* scratchPad, const uint8_t* deviceAddress = DEVICE_NOADDRESS)
 {
-    bool b = readScratchPad(deviceAddress, scratchPad);
+    bool b = readScratchPad(scratchPad, deviceAddress);
     return b && (_wire->crc8(scratchPad, 8) == scratchPad[SCRATCHPAD_CRC]);
 }
 
-bool DallasTemperature::readScratchPad(const uint8_t* deviceAddress, uint8_t* scratchPad){
-
+bool DallasTemperature::readScratchPad(uint8_t* scratchPad, const uint8_t* deviceAddress = DEVICE_NOADDRESS)
+{
     // send the reset command and fail fast
     int b = _wire->reset();
     if (b == 0) return false;
+	
+    if (deviceAddress = DEVICE_NOADDRESS) {
+        _wire->skip();
+    }
+    else {
+        _wire->select(deviceAddress);
+    }
 
-    _wire->select(deviceAddress);
     _wire->write(READSCRATCH);
 
     // Read all registers in a simple loop
@@ -170,16 +175,21 @@ bool DallasTemperature::readScratchPad(const uint8_t* deviceAddress, uint8_t* sc
 }
 
 
-void DallasTemperature::writeScratchPad(const uint8_t* deviceAddress, const uint8_t* scratchPad){
+void DallasTemperature::writeScratchPad(const uint8_t* scratchPad, const uint8_t* deviceAddress = DEVICE_NOADDRESS, bool isDS18S20 = false){
 
     _wire->reset();
-    _wire->select(deviceAddress);
+    if (deviceAddress = DEVICE_NOADDRESS) {
+        _wire->skip();
+    }
+    else {
+        _wire->select(deviceAddress);
+    }
     _wire->write(WRITESCRATCH);
     _wire->write(scratchPad[HIGH_ALARM_TEMP]); // high alarm temp
     _wire->write(scratchPad[LOW_ALARM_TEMP]); // low alarm temp
 
     // DS1820 and DS18S20 have no configuration register
-    if (deviceAddress[0] != DS18S20MODEL) _wire->write(scratchPad[CONFIGURATION]);
+    if (deviceAddress[0] != DS18S20MODEL && !isDS1820) _wire->write(scratchPad[CONFIGURATION]);
 
     _wire->reset();
 
@@ -193,11 +203,16 @@ void DallasTemperature::writeScratchPad(const uint8_t* deviceAddress, const uint
 
 }
 
-bool DallasTemperature::readPowerSupply(const uint8_t* deviceAddress){
+bool DallasTemperature::readPowerSupply(const uint8_t* deviceAddress = DEVICE_NOADDRESS){
 
     bool ret = false;
     _wire->reset();
-    _wire->select(deviceAddress);
+    if (deviceAddress = DEVICE_NOADDRESS) {
+        _wire->skip();
+    }
+    else {
+        _wire->select(deviceAddress);
+    }
     _wire->write(READPOWERSUPPLY);
     if (_wire->read_bit() == 0) ret = true;
     _wire->reset();
@@ -231,7 +246,7 @@ bool DallasTemperature::setResolution(const uint8_t* deviceAddress, uint8_t newR
     if(getResolution(deviceAddress) == newResolution) return true;
 
     ScratchPad scratchPad;
-    if (isConnected(deviceAddress, scratchPad)){
+    if (isConnected(scratchPad, deviceAddress)){
 
         // DS1820 and DS18S20 have no resolution configuration register
         if (deviceAddress[0] != DS18S20MODEL){
@@ -286,7 +301,7 @@ uint8_t DallasTemperature::getResolution(const uint8_t* deviceAddress){
     if (deviceAddress[0] == DS18S20MODEL) return 12;
 
     ScratchPad scratchPad;
-    if (isConnected(deviceAddress, scratchPad))
+    if (isConnected(scratchPad, deviceAddress))
     {
         switch (scratchPad[CONFIGURATION])
         {
@@ -444,7 +459,7 @@ float DallasTemperature::getTempFByIndex(uint8_t deviceIndex){
 }
 
 // reads scratchpad and returns fixed-point temperature, scaling factor 2^-7
-int16_t DallasTemperature::calculateTemperature(const uint8_t* deviceAddress, uint8_t* scratchPad){
+int16_t DallasTemperature::calculateTemperature(uint8_t* scratchPad, const uint8_t* deviceAddress = DEVICE_NOADDRESS, bool isDS18S20 = false){
 
     int16_t fpTemperature =
     (((int16_t) scratchPad[TEMP_MSB]) << 11) |
@@ -475,7 +490,7 @@ int16_t DallasTemperature::calculateTemperature(const uint8_t* deviceAddress, ui
     See - http://myarduinotoy.blogspot.co.uk/2013/02/12bit-result-from-ds18s20.html
     */
 
-    if (deviceAddress[0] == DS18S20MODEL){
+    if (deviceAddress[0] == DS18S20MODEL || isDS1820){
         fpTemperature = ((fpTemperature & 0xfff0) << 3) - 16 +
             (
                 ((scratchPad[COUNT_PER_C] - scratchPad[COUNT_REMAIN]) << 7) /
@@ -491,10 +506,10 @@ int16_t DallasTemperature::calculateTemperature(const uint8_t* deviceAddress, ui
 // the numeric value of DEVICE_DISCONNECTED_RAW is defined in
 // DallasTemperature.h. It is a large negative number outside the
 // operating range of the device
-int16_t DallasTemperature::getTemp(const uint8_t* deviceAddress){
+int16_t DallasTemperature::getTemp(const uint8_t* deviceAddress = DEVICE_NOADDRESS, bool isDS18S20 = false){
 
     ScratchPad scratchPad;
-    if (isConnected(deviceAddress, scratchPad)) return calculateTemperature(deviceAddress, scratchPad);
+    if (isConnected(scratchPad, deviceAddress)) return calculateTemperature(scratchPad, deviceAddress, isDS18S20);
     return DEVICE_DISCONNECTED_RAW;
 
 }
@@ -504,8 +519,8 @@ int16_t DallasTemperature::getTemp(const uint8_t* deviceAddress){
 // the numeric value of DEVICE_DISCONNECTED_C is defined in
 // DallasTemperature.h. It is a large negative number outside the
 // operating range of the device
-float DallasTemperature::getTempC(const uint8_t* deviceAddress){
-    return rawToCelsius(getTemp(deviceAddress));
+float DallasTemperature::getTempC(const uint8_t* deviceAddress = DEVICE_NOADDRESS, bool isDS18S20 = false){
+    return rawToCelsius(getTemp(deviceAddress, isDS18S20));
 }
 
 // returns temperature in degrees F or DEVICE_DISCONNECTED_F if the
@@ -513,8 +528,8 @@ float DallasTemperature::getTempC(const uint8_t* deviceAddress){
 // the numeric value of DEVICE_DISCONNECTED_F is defined in
 // DallasTemperature.h. It is a large negative number outside the
 // operating range of the device
-float DallasTemperature::getTempF(const uint8_t* deviceAddress){
-    return rawToFahrenheit(getTemp(deviceAddress));
+float DallasTemperature::getTempF(const uint8_t* deviceAddress = DEVICE_NOADDRESS, bool isDS18S20 = false){
+    return rawToFahrenheit(getTemp(deviceAddress, isDS18S20));
 }
 
 // returns true if the bus requires parasite power
@@ -534,7 +549,7 @@ void DallasTemperature::setUserData(const uint8_t* deviceAddress, int16_t data)
     if(getUserData(deviceAddress) == data) return;
 
     ScratchPad scratchPad;
-    if (isConnected(deviceAddress, scratchPad))
+    if (isConnected(scratchPad, deviceAddress))
     {
         scratchPad[HIGH_ALARM_TEMP] = data >> 8;
         scratchPad[LOW_ALARM_TEMP] = data & 255;
@@ -546,7 +561,7 @@ int16_t DallasTemperature::getUserData(const uint8_t* deviceAddress)
 {
     int16_t data = 0;
     ScratchPad scratchPad;
-    if (isConnected(deviceAddress, scratchPad))
+    if (isConnected(scratchPad, deviceAddress))
     {
         data = scratchPad[HIGH_ALARM_TEMP] << 8;
         data += scratchPad[LOW_ALARM_TEMP];
@@ -636,7 +651,7 @@ void DallasTemperature::setHighAlarmTemp(const uint8_t* deviceAddress, char cels
     else if (celsius < -55) celsius = -55;
 
     ScratchPad scratchPad;
-    if (isConnected(deviceAddress, scratchPad)){
+    if (isConnected(scratchPad, deviceAddress)){
         scratchPad[HIGH_ALARM_TEMP] = (uint8_t)celsius;
         writeScratchPad(deviceAddress, scratchPad);
     }
@@ -656,7 +671,7 @@ void DallasTemperature::setLowAlarmTemp(const uint8_t* deviceAddress, char celsi
     else if (celsius < -55) celsius = -55;
 
     ScratchPad scratchPad;
-    if (isConnected(deviceAddress, scratchPad)){
+    if (isConnected(scratchPad, deviceAddress)){
         scratchPad[LOW_ALARM_TEMP] = (uint8_t)celsius;
         writeScratchPad(deviceAddress, scratchPad);
     }
@@ -668,7 +683,7 @@ void DallasTemperature::setLowAlarmTemp(const uint8_t* deviceAddress, char celsi
 char DallasTemperature::getHighAlarmTemp(const uint8_t* deviceAddress){
 
     ScratchPad scratchPad;
-    if (isConnected(deviceAddress, scratchPad)) return (char)scratchPad[HIGH_ALARM_TEMP];
+    if (isConnected(scratchPad, deviceAddress)) return (char)scratchPad[HIGH_ALARM_TEMP];
     return DEVICE_DISCONNECTED_C;
 
 }
@@ -678,7 +693,7 @@ char DallasTemperature::getHighAlarmTemp(const uint8_t* deviceAddress){
 char DallasTemperature::getLowAlarmTemp(const uint8_t* deviceAddress){
 
     ScratchPad scratchPad;
-    if (isConnected(deviceAddress, scratchPad)) return (char)scratchPad[LOW_ALARM_TEMP];
+    if (isConnected(scratchPad, deviceAddress)) return (char)scratchPad[LOW_ALARM_TEMP];
     return DEVICE_DISCONNECTED_C;
 
 }
@@ -772,7 +787,7 @@ bool DallasTemperature::alarmSearch(uint8_t* newAddr){
 bool DallasTemperature::hasAlarm(const uint8_t* deviceAddress){
 
     ScratchPad scratchPad;
-    if (isConnected(deviceAddress, scratchPad)){
+    if (isConnected(scratchPad, deviceAddress)){
 
         char temp = calculateTemperature(deviceAddress, scratchPad) >> 7;
 
@@ -845,116 +860,3 @@ void DallasTemperature::operator delete(void* p){
 }
 
 #endif
-
-
-// SINGLE-DROP STUFF
-
-bool DallasTemperature::singleReadScratchPad(uint8_t* scratchPad){
-
-    // send the reset command and fail fast
-    int b = _wire->reset();
-    if (b == 0) return false;
-
-    //_wire->select(deviceAddress);
-    _wire->skip();
-    _wire->write(READSCRATCH);
-
-    // Read all registers in a simple loop
-    // byte 0: temperature LSB
-    // byte 1: temperature MSB
-    // byte 2: high alarm temp
-    // byte 3: low alarm temp
-    // byte 4: DS18S20: store for crc
-    //         DS18B20 & DS1822: configuration register
-    // byte 5: internal use & crc
-    // byte 6: DS18S20: COUNT_REMAIN
-    //         DS18B20 & DS1822: store for crc
-    // byte 7: DS18S20: COUNT_PER_C
-    //         DS18B20 & DS1822: store for crc
-    // byte 8: SCRATCHPAD_CRC
-    for(uint8_t i = 0; i < 9; i++){
-        scratchPad[i] = _wire->read();
-    }
-
-    b = _wire->reset();
-    return (b == 1);
-}
-
-bool DallasTemperature::singleIsConnected(uint8_t* scratchPad)
-{
-    bool b = singleReadScratchPad(scratchPad);
-    return b && (_wire->crc8(scratchPad, 8) == scratchPad[SCRATCHPAD_CRC]);
-}
-
-// reads scratchpad and returns fixed-point temperature, scaling factor 2^-7
-int16_t DallasTemperature::singleCalculateTemperature(uint8_t* scratchPad, bool isDS18S20){
-
-    int16_t fpTemperature =
-    (((int16_t) scratchPad[TEMP_MSB]) << 11) |
-    (((int16_t) scratchPad[TEMP_LSB]) << 3);
-	
-    /*
-    DS1820 and DS18S20 have a 9-bit temperature register.
-
-    Resolutions greater than 9-bit can be calculated using the data from
-    the temperature, and COUNT REMAIN and COUNT PER °C registers in the
-    scratchpad.  The resolution of the calculation depends on the model.
-
-    While the COUNT PER °C register is hard-wired to 16 (10h) in a
-    DS18S20, it changes with temperature in DS1820.
-
-    After reading the scratchpad, the TEMP_READ value is obtained by
-    truncating the 0.5°C bit (bit 0) from the temperature data. The
-    extended resolution temperature can then be calculated using the
-    following equation:
-
-                                    COUNT_PER_C - COUNT_REMAIN
-    TEMPERATURE = TEMP_READ - 0.25 + --------------------------
-                                            COUNT_PER_C
-
-    Hagai Shatz simplified this to integer arithmetic for a 12 bits
-    value for a DS18S20, and James Cameron added legacy DS1820 support.
-
-    See - http://myarduinotoy.blogspot.co.uk/2013/02/12bit-result-from-ds18s20.html
-    */
-
-    if (isDS18S20){
-        fpTemperature = ((fpTemperature & 0xfff0) << 3) - 16 +
-            (
-                ((scratchPad[COUNT_PER_C] - scratchPad[COUNT_REMAIN]) << 7) /
-                  scratchPad[COUNT_PER_C]
-            );
-    }
-
-    return fpTemperature;
-}
-
-// returns temperature in 1/128 degrees C or DEVICE_DISCONNECTED_RAW if the
-// device's scratch pad cannot be read successfully.
-// the numeric value of DEVICE_DISCONNECTED_RAW is defined in
-// DallasTemperature.h. It is a large negative number outside the
-// operating range of the device
-int16_t DallasTemperature::singleGetTemp(bool isDS18S20){
-
-    ScratchPad scratchPad;
-    if (singleIsConnected(scratchPad)) return singleCalculateTemperature(scratchPad, isDS18S20);
-    return DEVICE_DISCONNECTED_RAW;
-}
-
-// returns temperature in degrees C or DEVICE_DISCONNECTED_C if the
-// device's scratch pad cannot be read successfully.
-// the numeric value of DEVICE_DISCONNECTED_C is defined in
-// DallasTemperature.h. It is a large negative number outside the
-// operating range of the device
-float DallasTemperature::singleGetTempC(bool isDS18S20 = false){
-    return rawToCelsius(singleGetTemp(isDS18S20));
-}
-
-// returns temperature in degrees F or DEVICE_DISCONNECTED_F if the
-// device's scratch pad cannot be read successfully.
-// the numeric value of DEVICE_DISCONNECTED_F is defined in
-// DallasTemperature.h. It is a large negative number outside the
-// operating range of the device
-float DallasTemperature::singleGetTempF(bool isDS18S20 = false){
-    return rawToFahrenheit(singleGetTemp(isDS18S20));
-}
