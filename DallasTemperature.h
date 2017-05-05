@@ -126,6 +126,14 @@ public:
     bool isConversionComplete(void);
 
     int16_t millisToWaitForConversion(uint8_t);
+    
+        // support for high-speed temperature reads on single-drop networks
+    bool singleReadScratchPad(uint8_t*);
+    bool singleConnected(uint8_t*);
+    int16_t singleCalculateTemperature(uint8_t*);
+    int16_t singleGetTemp(void);
+    float singleGetTempC(void);
+    float singleGetTempF(void);
 
 #if REQUIRESALARMS
 
