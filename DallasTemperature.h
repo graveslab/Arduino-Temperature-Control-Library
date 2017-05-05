@@ -129,11 +129,11 @@ public:
     
         // support for high-speed temperature reads on single-drop networks
     bool singleReadScratchPad(uint8_t*);
-    bool singleConnected(uint8_t*);
-    int16_t singleCalculateTemperature(uint8_t*);
-    int16_t singleGetTemp(void);
-    float singleGetTempC(void);
-    float singleGetTempF(void);
+    bool singleIsConnected(uint8_t*);
+    int16_t singleCalculateTemperature(uint8_t*, bool);
+    int16_t singleGetTemp(bool);
+    float singleGetTempC(bool);
+    float singleGetTempF(bool);
 
 #if REQUIRESALARMS
 
