@@ -880,20 +880,51 @@ bool DallasTemperature::singleReadScratchPad(uint8_t* scratchPad){
     return (b == 1);
 }
 
-bool DallasTemperature::singleConnected(uint8_t* scratchPad)
+bool DallasTemperature::singleIsConnected(uint8_t* scratchPad)
 {
     bool b = singleReadScratchPad(scratchPad);
     return b && (_wire->crc8(scratchPad, 8) == scratchPad[SCRATCHPAD_CRC]);
 }
 
 // reads scratchpad and returns fixed-point temperature, scaling factor 2^-7
-int16_t DallasTemperature::singleCalculateTemperature(uint8_t* scratchPad){
+int16_t DallasTemperature::singleCalculateTemperature(uint8_t* scratchPad, bool isDS18S20){
 
     int16_t fpTemperature =
     (((int16_t) scratchPad[TEMP_MSB]) << 11) |
     (((int16_t) scratchPad[TEMP_LSB]) << 3);
 	
-    // NO SUPPORT FOR DS1820 and DS18S20 ("DS18SMODEL")
+    /*
+    DS1820 and DS18S20 have a 9-bit temperature register.
+
+    Resolutions greater than 9-bit can be calculated using the data from
+    the temperature, and COUNT REMAIN and COUNT PER °C registers in the
+    scratchpad.  The resolution of the calculation depends on the model.
+
+    While the COUNT PER °C register is hard-wired to 16 (10h) in a
+    DS18S20, it changes with temperature in DS1820.
+
+    After reading the scratchpad, the TEMP_READ value is obtained by
+    truncating the 0.5°C bit (bit 0) from the temperature data. The
+    extended resolution temperature can then be calculated using the
+    following equation:
+
+                                    COUNT_PER_C - COUNT_REMAIN
+    TEMPERATURE = TEMP_READ - 0.25 + --------------------------
+                                            COUNT_PER_C
+
+    Hagai Shatz simplified this to integer arithmetic for a 12 bits
+    value for a DS18S20, and James Cameron added legacy DS1820 support.
+
+    See - http://myarduinotoy.blogspot.co.uk/2013/02/12bit-result-from-ds18s20.html
+    */
+
+    if (isDS18S20){
+        fpTemperature = ((fpTemperature & 0xfff0) << 3) - 16 +
+            (
+                ((scratchPad[COUNT_PER_C] - scratchPad[COUNT_REMAIN]) << 7) /
+                  scratchPad[COUNT_PER_C]
+            );
+    }
 
     return fpTemperature;
 }
@@ -903,10 +934,10 @@ int16_t DallasTemperature::singleCalculateTemperature(uint8_t* scratchPad){
 // the numeric value of DEVICE_DISCONNECTED_RAW is defined in
 // DallasTemperature.h. It is a large negative number outside the
 // operating range of the device
-int16_t DallasTemperature::singleGetTemp(void){
+int16_t DallasTemperature::singleGetTemp(bool isDS18S20){
 
     ScratchPad scratchPad;
-    if (singleConnected(scratchPad)) return singleCalculateTemperature(scratchPad);
+    if (singleConnected(scratchPad)) return singleCalculateTemperature(scratchPad, isDS18S20);
     return DEVICE_DISCONNECTED_RAW;
 }
 
@@ -915,8 +946,8 @@ int16_t DallasTemperature::singleGetTemp(void){
 // the numeric value of DEVICE_DISCONNECTED_C is defined in
 // DallasTemperature.h. It is a large negative number outside the
 // operating range of the device
-float DallasTemperature::singleGetTempC(void){
-    return rawToCelsius(singleGetTemp());
+float DallasTemperature::singleGetTempC(bool isDS18S20 = false){
+    return rawToCelsius(singleGetTemp(isDS18S20));
 }
 
 // returns temperature in degrees F or DEVICE_DISCONNECTED_F if the
@@ -924,6 +955,6 @@ float DallasTemperature::singleGetTempC(void){
 // the numeric value of DEVICE_DISCONNECTED_F is defined in
 // DallasTemperature.h. It is a large negative number outside the
 // operating range of the device
-float DallasTemperature::singleGetTempF(void){
-    return rawToFahrenheit(singleGetTemp());
+float DallasTemperature::singleGetTempF(bool isDS18S20 = false){
+    return rawToFahrenheit(singleGetTemp(isDS18S20));
 }
