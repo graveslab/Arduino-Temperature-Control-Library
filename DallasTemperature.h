@@ -33,6 +33,9 @@
 #define DEVICE_DISCONNECTED_F -196.6
 #define DEVICE_DISCONNECTED_RAW -7040
 
+// Default Parameters
+#define DEVICE_NOADDRESS -1
+
 typedef uint8_t DeviceAddress[8];
 
 class DallasTemperature
@@ -64,13 +67,13 @@ public:
 
     // attempt to determine if the device at the given address is connected to the bus
     // also allows for updating the read scratchpad
-    bool isConnected(const uint8_t*, uint8_t*);
+    bool isConnected(uint8_t*, const uint8_t*);
 
     // read device's scratchpad
-    bool readScratchPad(const uint8_t*, uint8_t*);
+    bool readScratchPad(uint8_t*, const uint8_t*);
 
     // write device's scratchpad
-    void writeScratchPad(const uint8_t*, const uint8_t*);
+    void writeScratchPad(const uint8_t*, const uint8_t*, bool);
 
     // read device's power requirements
     bool readPowerSupply(const uint8_t*);
@@ -105,19 +108,19 @@ public:
     bool requestTemperaturesByIndex(uint8_t);
 
     // returns temperature raw value (12 bit integer of 1/128 degrees C)
-    int16_t getTemp(const uint8_t*);
+    int16_t getTemp(const uint8_t*, bool);
 
     // returns temperature in degrees C
-    float getTempC(const uint8_t*);
+    float getTempC(const uint8_t*, bool);
 
     // returns temperature in degrees F
-    float getTempF(const uint8_t*);
+    float getTempF(const uint8_t*, bool);
 
     // Get temperature for device index (slow)
-    float getTempCByIndex(uint8_t);
+    float getTempCByIndex(uint8_t, bool);
 
     // Get temperature for device index (slow)
-    float getTempFByIndex(uint8_t);
+    float getTempFByIndex(uint8_t, bool);
 
     // returns true if the bus requires parasite power
     bool isParasitePowerMode(void);
@@ -126,14 +129,6 @@ public:
     bool isConversionComplete(void);
 
     int16_t millisToWaitForConversion(uint8_t);
-    
-        // support for high-speed temperature reads on single-drop networks
-    bool singleReadScratchPad(uint8_t*);
-    bool singleIsConnected(uint8_t*);
-    int16_t singleCalculateTemperature(uint8_t*, bool);
-    int16_t singleGetTemp(bool);
-    float singleGetTempC(bool);
-    float singleGetTempF(bool);
 
 #if REQUIRESALARMS
 
